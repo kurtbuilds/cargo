@@ -137,6 +137,7 @@ This is the catch all, handling hashes to named references in remote repositorie
         .args([
             flag("dev",
                 "Add as development dependency")
+                .short('d')
                 .long_help("Add as development dependency
 
 Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
@@ -203,6 +204,29 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     Ok(())
 }
 
+
+fn parse_crates<'a>(crates_or_features: impl Iterator<Item=&'a String>) -> IndexMap<Option<String>, Option<IndexSet<String>>> {
+    let mut map: IndexMap<Option<String>, Option<IndexSet<String>>> = IndexMap::new();
+    let mut last: Option<&String> = None;
+    for s in crates_or_features {
+        if s.starts_with('+') {
+            let l: &String = last.expect("Tried to add feature, but you haven't specified a crate yet. Please specify a crate before adding features: cargo add <crate> +feature");
+            let mut set = map.get_mut(&Some(l.clone())).unwrap();
+            let set = set.get_or_insert_with(IndexSet::new);
+            // if set.is_none() {
+            //     *set = Some(IndexSet::new());
+            // }
+            // let set = set.unwrap();
+            set.insert(s[1..].to_string());
+        } else {
+            map.insert(Some(s.to_string()), None);
+            last = Some(s);
+        }
+    }
+    map
+}
+
+
 fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<DepOp>> {
     let path = matches.get_one::<String>("path");
     let git = matches.get_one::<String>("git");
@@ -214,12 +238,10 @@ fn parse_dependencies(config: &Config, matches: &ArgMatches) -> CargoResult<Vec<
     let default_features = default_features(matches);
     let optional = optional(matches);
 
-    let mut crates = matches
+    let mut crates = parse_crates(matches
         .get_many::<String>("crates")
         .into_iter()
-        .flatten()
-        .map(|c| (Some(c.clone()), None))
-        .collect::<IndexMap<_, _>>();
+        .flatten());
     let mut infer_crate_name = false;
     if crates.is_empty() {
         if path.is_some() || git.is_some() {
