@@ -137,7 +137,7 @@ This is the catch all, handling hashes to named references in remote repositorie
         .args([
             flag("dev",
                 "Add as development dependency")
-                .short('d')
+                .short('D')
                 .long_help("Add as development dependency
 
 Dev-dependencies are not used when compiling a package for building, but are used for compiling tests, examples, and benchmarks.
